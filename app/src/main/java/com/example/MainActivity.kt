@@ -253,6 +253,17 @@ fun ClassNotesApp(
         viewModel.onCameraCaptureResult(success)
     }
 
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val uri = viewModel.prepareCameraCapture()
+            if (uri != null) {
+                takePictureLauncher.launch(uri)
+            }
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -360,9 +371,18 @@ fun ClassNotesApp(
                             onEditTopicClick = { topic -> viewModel.openEditTopicDialog(topic) },
                             onDeleteTopicClick = { topic -> viewModel.requestDeleteTopic(topic) },
                             onRequestCameraCapture = {
-                                val uri = viewModel.prepareCameraCapture()
-                                if (uri != null) {
-                                    takePictureLauncher.launch(uri)
+                                val hasCameraPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.CAMERA
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                if (hasCameraPermission) {
+                                    val uri = viewModel.prepareCameraCapture()
+                                    if (uri != null) {
+                                        takePictureLauncher.launch(uri)
+                                    }
+                                } else {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                                 }
                             },
                             onGalleryPick = { uris -> viewModel.onGalleryPhotosSelected(uris) },

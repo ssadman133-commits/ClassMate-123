@@ -114,7 +114,7 @@ object CoverPageExporter {
                 resultUri = try {
                     FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", targetFile)
                 } catch (_: Exception) {
-                    Uri.fromFile(targetFile)
+                    null
                 }
             }
 

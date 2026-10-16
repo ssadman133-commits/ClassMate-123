@@ -526,10 +526,23 @@ fun SettingsScreen(
                         icon = Icons.Default.Info,
                         iconTint = MaterialTheme.colorScheme.primary,
                         iconBg = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        title = "About Class Notes",
-                        subtitle = "Version 1.0 • Student Productivity Suite",
+                        title = "About ClassMate",
+                        subtitle = "Version 2.7 • Student Productivity Suite",
                         testTag = "settings_about_row",
                         onClick = { showAboutDialog = true }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 68.dp, end = 16.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+                    SettingsRowItem(
+                        icon = Icons.Default.Security,
+                        iconTint = Color(0xFF10B981),
+                        iconBg = Color(0xFF10B981).copy(alpha = 0.12f),
+                        title = "Privacy Policy",
+                        subtitle = "Student data protection & terms",
+                        testTag = "settings_privacy_row",
+                        onClick = { showPrivacyDialog = true }
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(start = 68.dp, end = 16.dp),
@@ -759,6 +772,48 @@ fun SettingsScreen(
                     TextButton(onClick = { showFeedbackDialog = false }) {
                         Text("Cancel")
                     }
+                }
+            }
+        )
+    }
+
+    // Privacy Policy Dialog
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            icon = { Icon(Icons.Default.Security, contentDescription = null, tint = Color(0xFF10B981)) },
+            title = { Text("Privacy Policy", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        "ClassMate values your privacy:",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "1. Local Storage: All your lecture notes, blackboard photos, routine, CGPA, and assignment records are stored strictly offline on your device in secure app storage.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "2. Camera & Storage: Camera permission is used solely to capture blackboard photos upon your request. Photos remain private.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "3. Advertising: Google AdMob is utilized to display student-relevant sponsor banners. AdMob may process non-personally identifiable diagnostic and advertising identifiers per Google's standard ad policies.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "4. No Account Required: ClassMate does not require sign-up or harvest personal identity data.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showPrivacyDialog = false }) {
+                    Text("Understood")
                 }
             }
         )

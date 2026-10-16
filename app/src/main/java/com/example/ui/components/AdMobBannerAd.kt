@@ -46,12 +46,6 @@ import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
 
-// Global cached AdView instance: holds the loaded AdMob ad across dashboard exits/re-entries,
-// completely eliminating re-fetching, layout shifts, or blank flickers when navigating back.
-private var sCachedAdView: AdView? = null
-private var sCachedAdUnitId: String? = null
-private var sIsCachedAdLoaded: Boolean = false
-
 object AdMobConstants {
     const val APP_ID = "ca-app-pub-8519955082545459~2124969958"
     const val BANNER_AD_UNIT_ID = "ca-app-pub-8519955082545459/4440998339"
@@ -114,7 +108,7 @@ fun AdMobBannerAd(
 ) {
     val context = LocalContext.current
     val isOnline = remember(context) { isDeviceOnline(context) }
-    var isAdLoaded by remember { mutableStateOf(sIsCachedAdLoaded) }
+    var isAdLoaded by remember { mutableStateOf(false) }
     var adFailedToLoad by remember { mutableStateOf(false) }
 
     val effectiveAdUnitId = remember(adUnitId) {
@@ -234,43 +228,39 @@ fun AdMobBannerAd(
                         modifier = Modifier.fillMaxWidth(),
                         factory = { ctx ->
                             try {
-                                val cached = sCachedAdView
-                                if (cached != null && sCachedAdUnitId == effectiveAdUnitId) {
-                                    (cached.parent as? android.view.ViewGroup)?.removeView(cached)
-                                    cached
-                                } else {
-                                    AdView(ctx).apply {
-                                        // Always use SOFTWARE layer to prevent Mesa GPU rendernode errors and driver crashes in virtualized/emulator environments
-                                        setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
-                                        setAdSize(AdSize.LARGE_BANNER)
-                                        this.adUnitId = effectiveAdUnitId
-                                        adListener = object : AdListener() {
-                                            override fun onAdLoaded() {
-                                                isAdLoaded = true
-                                                sIsCachedAdLoaded = true
-                                                adFailedToLoad = false
-                                            }
+                                AdView(ctx).apply {
+                                    // Always use SOFTWARE layer to prevent Mesa GPU rendernode errors and driver crashes in virtualized/emulator environments
+                                    setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
+                                    setAdSize(AdSize.LARGE_BANNER)
+                                    this.adUnitId = effectiveAdUnitId
+                                    adListener = object : AdListener() {
+                                        override fun onAdLoaded() {
+                                            isAdLoaded = true
+                                            adFailedToLoad = false
+                                        }
 
-                                            override fun onAdFailedToLoad(error: LoadAdError) {
-                                                if (adSize == AdSize.LARGE_BANNER) {
-                                                    setAdSize(AdSize.BANNER)
-                                                    loadAd(AdRequest.Builder().build())
-                                                } else {
-                                                    if (!isAdLoaded) {
-                                                        adFailedToLoad = true
-                                                    }
+                                        override fun onAdFailedToLoad(error: LoadAdError) {
+                                            if (adSize == AdSize.LARGE_BANNER) {
+                                                setAdSize(AdSize.BANNER)
+                                                loadAd(AdRequest.Builder().build())
+                                            } else {
+                                                if (!isAdLoaded) {
+                                                    adFailedToLoad = true
                                                 }
                                             }
                                         }
-                                        sCachedAdView = this
-                                        sCachedAdUnitId = effectiveAdUnitId
-                                        loadAd(AdRequest.Builder().build())
                                     }
+                                    loadAd(AdRequest.Builder().build())
                                 }
                             } catch (_: Throwable) {
                                 adFailedToLoad = true
                                 android.view.View(ctx)
                             }
+                        },
+                        onRelease = { view ->
+                            try {
+                                (view as? AdView)?.destroy()
+                            } catch (_: Throwable) {}
                         }
                     )
                 }

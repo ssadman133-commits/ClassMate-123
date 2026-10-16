@@ -14,9 +14,9 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.classnotes.vqzj"
+    applicationId = "com.classmate.studentapp"
     minSdk = 24
-    targetSdk = 36
+    targetSdk = 35
     versionCode = 9
     versionName = "2.7"
 

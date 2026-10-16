@@ -31,7 +31,7 @@ data class ShareableNoteData(
 object NoteSharingManager {
 
     private const val SHARE_CODE_PREFIX = "CMNOTE:"
-    const val DEFAULT_APP_DOWNLOAD_LINK = "https://ais-pre-qrm734r2fg5sgncyghbqi4-206919312131.asia-southeast1.run.app"
+    const val DEFAULT_APP_DOWNLOAD_LINK = "https://play.google.com/store/apps/details?id=com.classmate.studentapp"
     private const val DEEP_LINK_BASE = "classmate://note"
 
     private fun urlEncode(value: String): String {

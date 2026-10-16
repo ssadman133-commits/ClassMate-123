@@ -16,9 +16,9 @@ android {
   defaultConfig {
     applicationId = "com.classmate.studentapp"
     minSdk = 24
-    targetSdk = 35
-    versionCode = 9
-    versionName = "2.7"
+    targetSdk = 36
+    versionCode = 10
+    versionName = "2.8"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -29,9 +29,9 @@ android {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
+      storePassword = System.getenv("STORE_PASSWORD") ?: "classmate2026"
       keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      keyPassword = System.getenv("KEY_PASSWORD") ?: "classmate2026"
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")

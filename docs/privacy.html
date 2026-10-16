@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - ClassMate</title>
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-dark: #1D4ED8;
+            --surface: #FFFFFF;
+            --background: #F8FAFC;
+            --text-main: #0F172A;
+            --text-muted: #475569;
+            --border: #E2E8F0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --surface: #1E293B;
+                --background: #0F172A;
+                --text-main: #F8FAFC;
+                --text-muted: #94A3B8;
+                --border: #334155;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            line-height: 1.65;
+            padding: 24px 16px;
+        }
+
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        header {
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+
+        .brand-badge {
+            display: inline-block;
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 13px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .effective-date {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        h2 {
+            font-size: 20px;
+            color: var(--primary);
+            margin-top: 28px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        p, li {
+            color: var(--text-muted);
+            font-size: 15px;
+            margin-bottom: 14px;
+        }
+
+        ul {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: rgba(37, 99, 235, 0.06);
+            border-left: 4px solid var(--primary);
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .highlight-box p {
+            color: var(--text-main);
+            margin-bottom: 0;
+            font-weight: 500;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <span class="brand-badge">Official Legal Document</span>
+            <h1>Privacy Policy for ClassMate</h1>
+            <p class="effective-date">Last Updated: October 16, 2026 &bull; Effective Date: October 16, 2026</p>
+        </header>
+
+        <section>
+            <p>
+                Welcome to <strong>ClassMate</strong> (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;the application&rdquo;), a dedicated student productivity suite available under package ID <code>com.classmate.studentapp</code>. We are deeply committed to protecting the privacy of university and college students who rely on our app for academic organization.
+            </p>
+
+            <div class="highlight-box">
+                <p>
+                    <strong>Summary in plain English:</strong> All your lecture notes, blackboard photos, CGPA records, routines, and study plans stay strictly offline on your own device. We do not operate user accounts, track personal identities, or upload your private academic records to our servers.
+                </div>
+            </div>
+
+            <h2>1. Information Stored Locally on Your Device</h2>
+            <p>ClassMate is built primarily as an offline-first student tool. The following data is processed and stored exclusively inside your device's sandboxed local database (Room SQLite) and private storage:</p>
+            <ul>
+                <li><strong>Lecture Notes &amp; Captions:</strong> Titles, subjects, lecture dates, topic names, and text annotations created by you.</li>
+                <li><strong>Blackboard / Lecture Photos:</strong> Images you take using the built-in camera or import from your gallery. These photos remain in your device's internal application storage and are never uploaded to any cloud storage.</li>
+                <li><strong>Academic Routine &amp; Schedule:</strong> Weekly class times, room numbers, and subject assignments.</li>
+                <li><strong>CGPA &amp; Grade Data:</strong> Course grades, credit hours, and semester grade point averages.</li>
+                <li><strong>Assignment &amp; Exam Deadlines:</strong> Task deadlines, priorities, and alarm reminder timestamps.</li>
+                <li><strong>Focus Timer Sessions:</strong> Logged study session durations and subject tags for personal productivity analytics.</li>
+            </ul>
+
+            <h2>2. Device Hardware Permissions &amp; Why We Need Them</h2>
+            <p>ClassMate requests only the minimum set of permissions necessary to deliver essential academic features:</p>
+            <ul>
+                <li><strong>Camera (<code>android.permission.CAMERA</code>):</strong> Used solely when you tap the camera button to take blackboard photos or notes during class. The app never records background video or captures images without your explicit tap.</li>
+                <li><strong>Exact &amp; Inexact Alarms (<code>SCHEDULE_EXACT_ALARM</code>):</strong> Used to trigger localized notification alarms for upcoming assignment deadlines and exam schedules so students never miss a submission.</li>
+                <li><strong>Post Notifications (<code>android.permission.POST_NOTIFICATIONS</code>):</strong> Used on Android 13+ to show reminder alerts and notifications.</li>
+                <li><strong>Internet &amp; Network State (<code>INTERNET</code>, <code>ACCESS_NETWORK_STATE</code>):</strong> Used to download sponsor promotional banners and display Google AdMob advertisements.</li>
+            </ul>
+
+            <h2>3. Third-Party Services &amp; Advertising</h2>
+            <p>To keep ClassMate free for students, the app integrates trusted third-party services that may collect diagnostic or advertising telemetry subject to their respective privacy policies:</p>
+            <ul>
+                <li>
+                    <strong>Google AdMob:</strong> We use Google AdMob to serve banner advertisements. AdMob may collect and process pseudonymous identifiers (such as the Google Advertising ID / GAID), coarse location, device specifications, and interaction data to serve contextual ads and prevent click fraud. For more details on Google&rsquo;s practices, visit <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">Google Advertising Privacy Policy</a>.
+                </li>
+                <li>
+                    <strong>Supabase Backend (Sponsor Sync):</strong> We utilize Supabase REST APIs to synchronize active academic sponsorship campaigns and partner banners. This transmits non-personal diagnostic metrics (impression and click counts per campaign).
+                </li>
+            </ul>
+
+            <h2>4. Children&rsquo;s Privacy (COPPA Compliance)</h2>
+            <p>
+                ClassMate is specifically designed for college and university students. The application does not intentionally solicit, collect, or retain personally identifiable information from children under the age of 13. If you believe that a child under 13 has provided personal data, please contact us immediately, and we will promptly rectify the situation.
+            </p>
+
+            <h2>5. Data Retention &amp; Deletion</h2>
+            <p>
+                Because your data is stored locally on your device, you have complete control over it at all times:
+            </p>
+            <ul>
+                <li>You can edit or delete individual notes, photos, courses, or routine entries at any time using the delete options within the app.</li>
+                <li>Clearing app data or uninstalling ClassMate from your device permanently erases all locally stored notes, database entries, and photos.</li>
+            </ul>
+
+            <h2>6. Changes to This Privacy Policy</h2>
+            <p>
+                We may periodically update our Privacy Policy to reflect app updates or regulatory changes. Any updates will be published on this page with an updated &ldquo;Last Updated&rdquo; date. We encourage you to review this page periodically.
+            </p>
+
+            <h2>7. Contact Information</h2>
+            <p>
+                If you have any questions, feedback, or concerns regarding this Privacy Policy or your data, please contact us directly at:
+            </p>
+            <p>
+                <strong>Developer:</strong> Sadman / ClassMate Team<br>
+                <strong>Email:</strong> <a href="mailto:ssadman133@gmail.com">ssadman133@gmail.com</a><br>
+                <strong>Application ID:</strong> <code>com.classmate.studentapp</code>
+            </p>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 ClassMate. All rights reserved. Designed for university students worldwide.</p>
+        </footer>
+    </div>
+</body>
+</html>

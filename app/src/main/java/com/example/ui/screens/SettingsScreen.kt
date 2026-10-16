@@ -815,6 +815,23 @@ fun SettingsScreen(
                 Button(onClick = { showPrivacyDialog = false }) {
                     Text("Understood")
                 }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        try {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://ssadman133-commits.github.io/ClassMate--/privacy.html")
+                            ).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    }
+                ) {
+                    Text("Online Policy")
+                }
             }
         )
     }

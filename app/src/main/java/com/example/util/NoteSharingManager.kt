@@ -300,11 +300,11 @@ object NoteSharingManager {
                     val decodedBytes = Base64.decode(code, Base64.DEFAULT)
                     val json = JSONObject(String(decodedBytes, Charsets.UTF_8))
                     val courseName = json.optString("cName", "Imported Course")
-                    val courseCode = json.optString("cCode", null)
+                    val courseCode = if (json.has("cCode") && !json.isNull("cCode")) json.optString("cCode") else null
                     val topicName = json.optString("tName", "Class Notes")
-                    val caption = json.optString("cap", null)
+                    val caption = if (json.has("cap") && !json.isNull("cap")) json.optString("cap") else null
                     val importance = json.optInt("imp", 3).coerceIn(1, 5)
-                    val imageBase64 = json.optString("img", null)
+                    val imageBase64 = if (json.has("img") && !json.isNull("img")) json.optString("img") else null
 
                     return ShareableNoteData(
                         courseName = courseName,

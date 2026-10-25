@@ -17,8 +17,8 @@ android {
     applicationId = "com.classmate.studentapp"
     minSdk = 24
     targetSdk = 36
-    versionCode = 10
-    versionName = "2.8"
+    versionCode = 11
+    versionName = "2.9"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -88,6 +88,7 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
+  implementation(libs.androidx.fragment.ktx)
   // implementation(libs.androidx.camera.camera2)
   // implementation(libs.androidx.camera.core)
   // implementation(libs.androidx.camera.lifecycle)

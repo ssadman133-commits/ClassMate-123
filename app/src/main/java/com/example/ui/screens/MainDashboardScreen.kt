@@ -41,7 +41,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventNote
-import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -149,7 +148,6 @@ fun MainDashboardScreen(
     onNavigateToFacultyInfo: () -> Unit = {},
     onSponsorClick: (String, String) -> Unit,
     onSponsorImpression: ((String) -> Unit)? = null,
-    onImportSharedNote: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showNotificationSheet by remember { mutableStateOf(false) }
@@ -329,28 +327,6 @@ fun MainDashboardScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
-                        if (onImportSharedNote != null) {
-                            Surface(
-                                shape = CircleShape,
-                                color = actionBtnBg,
-                                border = BorderStroke(1.dp, actionBtnBorder),
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .clickable(onClick = onImportSharedNote)
-                                    .testTag("dashboard_import_note_button")
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.FileDownload,
-                                        contentDescription = "Import Shared Note",
-                                        tint = actionIconTint,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        }
-
                         // Refresh Button to quickly sync sponsors & updates
                         Surface(
                             shape = CircleShape,

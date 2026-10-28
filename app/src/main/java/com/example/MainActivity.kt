@@ -47,7 +47,6 @@ import com.example.ui.components.AddEditTopicDialog
 import com.example.ui.components.AddNoteStagingDialog
 import com.example.ui.components.AppBottomNavigationBar
 import com.example.ui.components.ConfirmDeleteDialog
-import com.example.ui.components.ImportSharedNoteDialog
 import com.example.ui.screens.AssignmentsScreen
 import com.example.ui.screens.CgpaCalculatorScreen
 import com.example.ui.screens.ClassRoutineScreen
@@ -213,7 +212,6 @@ fun ClassNotesApp(
 
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showImportDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
 
     // System Back Press handling
     BackHandler(enabled = currentScreen !is AppScreen.Home) {
@@ -320,8 +318,7 @@ fun ClassNotesApp(
                             },
                             onSponsorImpression = { sponsorId ->
                                 viewModel.recordSponsorImpression(sponsorId)
-                            },
-                            onImportSharedNote = { showImportDialog = true }
+                            }
                         )
                     }
 
@@ -333,7 +330,6 @@ fun ClassNotesApp(
                             onEditCourseClick = { course -> viewModel.openEditCourseDialog(course) },
                             onDeleteCourseClick = { course -> viewModel.requestDeleteCourse(course) },
                             onBack = { viewModel.navigateBack() },
-                            onImportSharedNote = { showImportDialog = true },
                             bottomBar = {
                                 AppBottomNavigationBar(
                                     currentScreen = screen,
@@ -652,19 +648,6 @@ fun ClassNotesApp(
             initialCaption = staged.initialCaption ?: "",
             onDismiss = { viewModel.dismissStagedPhotos() },
             onConfirm = { importance, caption -> viewModel.confirmStagedPhotos(importance, caption) }
-        )
-    }
-
-    if (showImportDialog) {
-        ImportSharedNoteDialog(
-            onDismiss = { showImportDialog = false },
-            onImport = { codeOrText ->
-                viewModel.importSharedNote(codeOrText) { success ->
-                    if (success) {
-                        showImportDialog = false
-                    }
-                }
-            }
         )
     }
 }

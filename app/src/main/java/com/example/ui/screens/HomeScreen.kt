@@ -24,7 +24,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -71,7 +70,6 @@ fun HomeScreen(
     onEditCourseClick: (Course) -> Unit,
     onDeleteCourseClick: (Course) -> Unit,
     onBack: (() -> Unit)? = null,
-    onImportSharedNote: (() -> Unit)? = null,
     bottomBar: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -100,20 +98,6 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                },
-                actions = {
-                    if (onImportSharedNote != null) {
-                        IconButton(
-                            onClick = onImportSharedNote,
-                            modifier = Modifier.testTag("import_shared_note_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FileDownload,
-                                contentDescription = "Import Shared Note",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface

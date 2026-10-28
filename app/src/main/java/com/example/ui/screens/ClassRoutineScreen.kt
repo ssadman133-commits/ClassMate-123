@@ -17,7 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -61,6 +64,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,10 +74,62 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.RoutineItem
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+
+data class RoutineDay(
+    val dayOfWeek: Int,   // 6 = Sat, 7 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri
+    val fullName: String, // "Saturday"
+    val shortName: String // "Sat"
+)
+
+val ROUTINE_DAYS = listOf(
+    RoutineDay(dayOfWeek = 6, fullName = "Saturday", shortName = "Sat"),
+    RoutineDay(dayOfWeek = 7, fullName = "Sunday", shortName = "Sun"),
+    RoutineDay(dayOfWeek = 1, fullName = "Monday", shortName = "Mon"),
+    RoutineDay(dayOfWeek = 2, fullName = "Tuesday", shortName = "Tue"),
+    RoutineDay(dayOfWeek = 3, fullName = "Wednesday", shortName = "Wed"),
+    RoutineDay(dayOfWeek = 4, fullName = "Thursday", shortName = "Thu"),
+    RoutineDay(dayOfWeek = 5, fullName = "Friday", shortName = "Fri")
+)
+
+fun getRoutineDateString(dayIndex: Int): String {
+    val cal = Calendar.getInstance()
+    val calDay = cal.get(Calendar.DAY_OF_WEEK)
+    val currentOffsetFromSaturday = when (calDay) {
+        Calendar.SATURDAY -> 0
+        Calendar.SUNDAY -> 1
+        Calendar.MONDAY -> 2
+        Calendar.TUESDAY -> 3
+        Calendar.WEDNESDAY -> 4
+        Calendar.THURSDAY -> 5
+        Calendar.FRIDAY -> 6
+        else -> 0
+    }
+    cal.add(Calendar.DAY_OF_YEAR, dayIndex - currentOffsetFromSaturday)
+    return SimpleDateFormat("MMM d", Locale.US).format(cal.time)
+}
+
+fun getRoutineFullDateString(dayIndex: Int): String {
+    val cal = Calendar.getInstance()
+    val calDay = cal.get(Calendar.DAY_OF_WEEK)
+    val currentOffsetFromSaturday = when (calDay) {
+        Calendar.SATURDAY -> 0
+        Calendar.SUNDAY -> 1
+        Calendar.MONDAY -> 2
+        Calendar.TUESDAY -> 3
+        Calendar.WEDNESDAY -> 4
+        Calendar.THURSDAY -> 5
+        Calendar.FRIDAY -> 6
+        else -> 0
+    }
+    cal.add(Calendar.DAY_OF_YEAR, dayIndex - currentOffsetFromSaturday)
+    return SimpleDateFormat("EEEE, MMMM d", Locale.US).format(cal.time)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,33 +142,31 @@ fun ClassRoutineScreen(
     bottomBar: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val days = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-
-    // Default to current day of week (Monday=1, Sunday=7)
+    // Default to current day of week (Saturday=6, Sunday=7, Monday=1, etc.)
     val todayDayOfWeek = remember {
         val calDay = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-        // Calendar.SUNDAY = 1, MONDAY = 2 ...
         when (calDay) {
+            Calendar.SATURDAY -> 6
+            Calendar.SUNDAY -> 7
             Calendar.MONDAY -> 1
             Calendar.TUESDAY -> 2
             Calendar.WEDNESDAY -> 3
             Calendar.THURSDAY -> 4
             Calendar.FRIDAY -> 5
-            Calendar.SATURDAY -> 6
-            Calendar.SUNDAY -> 7
-            else -> 1
+            else -> 6
         }
     }
 
-    var selectedDayIndex by remember { mutableIntStateOf(todayDayOfWeek - 1) }
+    val todayIndex = remember(todayDayOfWeek) {
+        val idx = ROUTINE_DAYS.indexOfFirst { it.dayOfWeek == todayDayOfWeek }
+        if (idx >= 0) idx else 0
+    }
+
+    val pagerState = rememberPagerState(initialPage = todayIndex) { ROUTINE_DAYS.size }
+    val coroutineScope = rememberCoroutineScope()
     var isWeeklyView by remember { mutableStateOf(false) }
     var showAddEditDialog by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<RoutineItem?>(null) }
-
-    val dayItems = remember(routineItems, selectedDayIndex) {
-        val targetDay = selectedDayIndex + 1
-        routineItems.filter { it.dayOfWeek == targetDay }
-    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -201,84 +255,176 @@ fun ClassRoutineScreen(
                 .padding(innerPadding)
         ) {
             if (!isWeeklyView) {
-                // DAILY VIEW MODE
+                // DAILY VIEW MODE WITH SWIPEABLE HORIZONTAL PAGER (SWIPING CHANGES DAY & DATE)
                 ScrollableTabRow(
-                    selectedTabIndex = selectedDayIndex,
-                    edgePadding = 16.dp
+                    selectedTabIndex = pagerState.currentPage,
+                    edgePadding = 16.dp,
+                    containerColor = MaterialTheme.colorScheme.surface
                 ) {
-                    days.forEachIndexed { index, dayName ->
-                        val count = routineItems.count { it.dayOfWeek == index + 1 }
+                    ROUTINE_DAYS.forEachIndexed { index, rDay ->
+                        val count = routineItems.count { it.dayOfWeek == rDay.dayOfWeek }
+                        val isSelected = pagerState.currentPage == index
+                        val isToday = index == todayIndex
+                        val dateLabel = getRoutineDateString(index)
+
                         Tab(
-                            selected = selectedDayIndex == index,
-                            onClick = { selectedDayIndex = index },
-                            text = {
-                                Text(
-                                    text = if (count > 0) "${dayName.take(3)} ($count)" else dayName.take(3),
-                                    fontWeight = if (selectedDayIndex == index) FontWeight.Bold else FontWeight.Normal
-                                )
+                            selected = isSelected,
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
                             },
-                            modifier = Modifier.testTag("tab_day_${index + 1}")
+                            text = {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = if (count > 0) "${rDay.shortName} ($count)" else rDay.shortName,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = dateLabel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            },
+                            modifier = Modifier.testTag("tab_day_${rDay.dayOfWeek}")
                         )
                     }
                 }
 
-                if (dayItems.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarMonth,
-                                contentDescription = null,
-                                modifier = Modifier.size(56.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                            Text(
-                                text = "No Classes on ${days[selectedDayIndex]}",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Tap '+' to add course timetable slots with start time, end time, and room number.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    val rDay = ROUTINE_DAYS[page]
+                    val dayItems = remember(routineItems, rDay.dayOfWeek) {
+                        routineItems.filter { it.dayOfWeek == rDay.dayOfWeek }
+                            .sortedBy { it.startTime }
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(dayItems, key = { it.id }) { item ->
-                            RoutineItemCard(
-                                item = item,
-                                onEdit = {
-                                    editingItem = item
-                                    showAddEditDialog = true
-                                },
-                                onDelete = { onDeleteRoutineItem(item) }
-                            )
+                    val fullDateStr = getRoutineFullDateString(page)
+                    val isToday = page == todayIndex
+
+                    if (dayItems.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                                Text(
+                                    text = "No Classes on ${rDay.fullName}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = if (isToday) "Today • $fullDateStr" else fullDateStr,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "Tap '+' to add course timetable slots with start time, end time, and room number.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 80.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CalendarMonth,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = fullDateStr,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (isToday) {
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Text(
+                                                text = "Today",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            items(dayItems, key = { it.id }) { item ->
+                                RoutineItemCard(
+                                    item = item,
+                                    onEdit = {
+                                        editingItem = item
+                                        showAddEditDialog = true
+                                    },
+                                    onDelete = { onDeleteRoutineItem(item) }
+                                )
+                            }
                         }
                     }
                 }
             } else {
                 // WEEKLY VIEW MODE
                 WeeklyRoutineView(
-                    days = days,
+                    routineDays = ROUTINE_DAYS,
                     routineItems = routineItems,
-                    todayDayIndex = todayDayOfWeek - 1,
+                    todayDayIndex = todayIndex,
                     onSelectDay = { dayIdx ->
-                        selectedDayIndex = dayIdx
                         isWeeklyView = false
+                        coroutineScope.launch {
+                            pagerState.scrollToPage(dayIdx)
+                        }
                     },
                     onEditItem = { item ->
                         editingItem = item
@@ -286,7 +432,9 @@ fun ClassRoutineScreen(
                     },
                     onDeleteItem = onDeleteRoutineItem,
                     onAddClassForDay = { dayIdx ->
-                        selectedDayIndex = dayIdx
+                        coroutineScope.launch {
+                            pagerState.scrollToPage(dayIdx)
+                        }
                         editingItem = null
                         showAddEditDialog = true
                     }
@@ -298,7 +446,7 @@ fun ClassRoutineScreen(
     if (showAddEditDialog) {
         AddEditRoutineDialog(
             existing = editingItem,
-            defaultDay = selectedDayIndex + 1,
+            defaultDay = ROUTINE_DAYS[pagerState.currentPage].dayOfWeek,
             onDismiss = { showAddEditDialog = false },
             onSave = { dayOfWeek, course, start, end, room ->
                 if (editingItem != null) {
@@ -322,7 +470,7 @@ fun ClassRoutineScreen(
 
 @Composable
 fun WeeklyRoutineView(
-    days: List<String>,
+    routineDays: List<RoutineDay>,
     routineItems: List<RoutineItem>,
     todayDayIndex: Int,
     onSelectDay: (Int) -> Unit,
@@ -332,7 +480,7 @@ fun WeeklyRoutineView(
     modifier: Modifier = Modifier
 ) {
     val totalClasses = routineItems.size
-    val activeDaysCount = days.indices.count { idx -> routineItems.any { it.dayOfWeek == idx + 1 } }
+    val activeDaysCount = routineDays.count { rDay -> routineItems.any { it.dayOfWeek == rDay.dayOfWeek } }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -387,9 +535,11 @@ fun WeeklyRoutineView(
         }
 
         // Each Day of Week Card
-        items(days.size) { index ->
-            val dayNumber = index + 1
-            val dayName = days[index]
+        items(routineDays.size) { index ->
+            val routineDay = routineDays[index]
+            val dayNumber = routineDay.dayOfWeek
+            val dayName = routineDay.fullName
+            val dateStr = getRoutineDateString(index)
             val classesForDay = routineItems.filter { it.dayOfWeek == dayNumber }
                 .sortedBy { it.startTime }
             val isToday = index == todayDayIndex
@@ -436,12 +586,19 @@ fun WeeklyRoutineView(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = dayName,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
+                            Column {
+                                Text(
+                                    text = dayName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = dateStr,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isToday) MaterialTheme.colorScheme.primary.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             if (isToday) {
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
@@ -734,7 +891,6 @@ fun AddEditRoutineDialog(
     var roomNumber by remember { mutableStateOf(existing?.roomNumber ?: "") }
     var selectedDay by remember { mutableIntStateOf(existing?.dayOfWeek ?: defaultDay) }
 
-    val days = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     val context = LocalContext.current
 
     val startTimePickerDialog = remember(context, startTime) {
@@ -794,13 +950,28 @@ fun AddEditRoutineDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Day selector row
-                Text(
-                    text = "Day: ${days[selectedDay - 1]}",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // Day selector chips
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val currentDayName = ROUTINE_DAYS.find { it.dayOfWeek == selectedDay }?.fullName ?: "Select Day"
+                    Text(
+                        text = "Day: $currentDayName",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(ROUTINE_DAYS) { rDay ->
+                            FilterChip(
+                                selected = selectedDay == rDay.dayOfWeek,
+                                onClick = { selectedDay = rDay.dayOfWeek },
+                                label = { Text(rDay.shortName) }
+                            )
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = courseName,

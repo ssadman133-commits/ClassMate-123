@@ -246,38 +246,58 @@ fun ExamCard(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Main Subject / Course Name (Boro & Prominent)
+                Text(
+                    text = exam.courseName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                // Exam Name / Type and Reminder badges
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
-                        Text(
-                            text = exam.courseName,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EventNote,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = exam.title,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
 
                     if (exam.reminderDaysBefore > 0) {
                         Surface(
-                            shape = RoundedCornerShape(4.dp),
+                            shape = RoundedCornerShape(6.dp),
                             color = MaterialTheme.colorScheme.secondaryContainer
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.NotificationsActive,
                                     contentDescription = null,
-                                    modifier = Modifier.size(12.dp),
+                                    modifier = Modifier.size(13.dp),
                                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                                 Text(
@@ -289,12 +309,6 @@ fun ExamCard(
                         }
                     }
                 }
-
-                Text(
-                    text = exam.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
 
                 if (!exam.description.isNullOrBlank()) {
                     Text(
@@ -435,20 +449,20 @@ fun AddEditExamDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Exam Name / Type *") },
-                    placeholder = { Text("e.g. Midterm, Final, Quiz 1") },
-                    modifier = Modifier.fillMaxWidth().testTag("exam_title_input"),
+                    value = courseName,
+                    onValueChange = { courseName = it },
+                    label = { Text("Course / Subject Name *") },
+                    placeholder = { Text("e.g. SPL, Physics I, Calculus") },
+                    modifier = Modifier.fillMaxWidth().testTag("exam_course_input"),
                     singleLine = true
                 )
 
                 OutlinedTextField(
-                    value = courseName,
-                    onValueChange = { courseName = it },
-                    label = { Text("Course Name *") },
-                    placeholder = { Text("e.g. Physics I") },
-                    modifier = Modifier.fillMaxWidth().testTag("exam_course_input"),
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Exam Name / Type *") },
+                    placeholder = { Text("e.g. Midterm Exam, Final Exam, Quiz 1") },
+                    modifier = Modifier.fillMaxWidth().testTag("exam_title_input"),
                     singleLine = true
                 )
 

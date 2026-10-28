@@ -305,7 +305,7 @@ fun ClassRoutineScreen(
                     val rDay = ROUTINE_DAYS[page]
                     val dayItems = remember(routineItems, rDay.dayOfWeek) {
                         routineItems.filter { it.dayOfWeek == rDay.dayOfWeek }
-                            .sortedBy { it.startTime }
+                            .sortedBy { it.startTimeMinutes }
                     }
                     val fullDateStr = getRoutineFullDateString(page)
                     val isToday = page == todayIndex
@@ -541,7 +541,7 @@ fun WeeklyRoutineView(
             val dayName = routineDay.fullName
             val dateStr = getRoutineDateString(index)
             val classesForDay = routineItems.filter { it.dayOfWeek == dayNumber }
-                .sortedBy { it.startTime }
+                .sortedBy { it.startTimeMinutes }
             val isToday = index == todayDayIndex
             val hasClasses = classesForDay.isNotEmpty()
 

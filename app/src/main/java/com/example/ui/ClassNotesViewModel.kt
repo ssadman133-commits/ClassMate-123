@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -160,6 +161,7 @@ class ClassNotesViewModel(application: Application) : AndroidViewModel(applicati
 
     // Class Routine
     val routineItems: StateFlow<List<RoutineItem>> = repository.allRoutineItems
+        .map { list -> list.sortedWith(compareBy({ it.dayOfWeek }, { it.startTimeMinutes })) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

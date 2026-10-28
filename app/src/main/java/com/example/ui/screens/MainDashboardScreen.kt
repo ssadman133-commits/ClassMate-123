@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventNote
@@ -69,6 +70,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -102,9 +104,17 @@ import com.example.ui.components.CompactSponsorBanner
 import com.example.ui.components.CompactSponsorCarousel
 import com.example.ui.components.DashboardHubAdBanner
 import com.example.ui.components.UpcomingAlertsBottomSheet
+import com.example.ui.components.isRunningOnEmulator
 import com.example.util.CountryDetector
 import com.example.ui.theme.*
 import java.util.Calendar
+import java.util.TimeZone
+
+/**
+ * Returns a Calendar instance aligned with the student's device timezone.
+ * Works universally across any country worldwide based on the user's local phone time and clock.
+ */
+fun getAppCalendar(): Calendar = Calendar.getInstance()
 
 // Reusable static shapes & brushes to completely eliminate recomposition GC overhead
 private val GridCardCornerShape = RoundedCornerShape(18.dp)
@@ -116,10 +126,6 @@ private val CardDropShadowBrush = Brush.verticalGradient(
         Color(0xFF334155).copy(alpha = 0.15f)
     )
 )
-
-// Session-wide stabilization flag: once the app initializes, returning from any sub-screen
-// will never re-trigger startup stabilization or banner reloading.
-private var sHasAppStabilized = false
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -189,21 +195,8 @@ fun MainDashboardScreen(
         mutableStateOf(checkInternetOnline())
     }
 
-    // Smooth Startup Stabilization:
-    // Holds a quiet stabilizer strictly ONCE per process session (~180ms) upon cold app launch.
-    // When navigating back from courses, assignments, routine or other tabs, it remains permanently true,
-    // ensuring instantaneous zero-flicker ad/sponsor display without reloading the slot.
-    var isInitialized by rememberSaveable { mutableStateOf(sHasAppStabilized) }
-
     LaunchedEffect(Unit) {
-        if (!sHasAppStabilized) {
-            delay(180L)
-            isOnline = checkInternetOnline()
-            sHasAppStabilized = true
-            isInitialized = true
-        } else {
-            isOnline = checkInternetOnline()
-        }
+        isOnline = checkInternetOnline()
     }
 
     DisposableEffect(context) {
@@ -245,8 +238,21 @@ fun MainDashboardScreen(
         else emptyList()
     }
 
-    val todayDayOfWeek = remember {
-        when (Calendar.getInstance().get(Calendar.DAY_OF_WEEK)) {
+    var currentDayOfYear by remember {
+        mutableIntStateOf(getAppCalendar().get(Calendar.DAY_OF_YEAR))
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val day = getAppCalendar().get(Calendar.DAY_OF_YEAR)
+            if (currentDayOfYear != day) {
+                currentDayOfYear = day
+            }
+            delay(30_000L)
+        }
+    }
+
+    val todayDayOfWeek = remember(currentDayOfYear) {
+        when (getAppCalendar().get(Calendar.DAY_OF_WEEK)) {
             Calendar.MONDAY -> 1
             Calendar.TUESDAY -> 2
             Calendar.WEDNESDAY -> 3
@@ -271,6 +277,7 @@ fun MainDashboardScreen(
     }
     val todayClasses = remember(routineItems, todayDayOfWeek) {
         routineItems.filter { it.dayOfWeek == todayDayOfWeek }
+            .sortedBy { it.startTimeMinutes }
     }
 
     // Pull to refresh gesture handling
@@ -374,15 +381,6 @@ fun MainDashboardScreen(
                                     tint = actionIconTint,
                                     modifier = Modifier.size(18.dp)
                                 )
-                                // Active indicator dot
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .align(Alignment.TopEnd)
-                                        .offset(x = (-6).dp, y = 6.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF2DD4BF))
-                                )
                             }
                         }
                     }
@@ -443,51 +441,23 @@ fun MainDashboardScreen(
                         .fillMaxWidth()
                         .padding(top = 4.dp, bottom = 6.dp)
                 ) {
-                    Crossfade(
-                        targetState = when {
-                            !isInitialized -> 0 // Initializing / Stabilizing
-                            isOnline -> 1 // Online (Sponsor / AdMob)
-                            else -> 2 // Offline (Today's Academic Agenda)
-                        },
-                        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
-                        label = "BannerSlotCrossfade"
-                    ) { state ->
-                        when (state) {
-                            0 -> {
-                                BannerSlotStabilizerPlaceholder()
-                            }
-                            1 -> {
-                                if (displaySponsors.isNotEmpty()) {
-                                    CompactSponsorCarousel(
-                                        sponsors = displaySponsors,
-                                        onSponsorClick = onSponsorClick,
-                                        onSponsorImpression = onSponsorImpression,
-                                        slideIntervalMillis = 4000L
-                                    )
-                                } else {
-                                    TodayAcademicAgendaBanner(
-                                        todayClasses = todayClasses,
-                                        todayDayName = todayDayName,
-                                        assignments = assignments,
-                                        exams = exams,
-                                        onNavigateToRoutine = onNavigateToRoutine,
-                                        onNavigateToAssignments = onNavigateToAssignments,
-                                        onNavigateToExams = onNavigateToExams
-                                    )
-                                }
-                            }
-                            2 -> {
-                                TodayAcademicAgendaBanner(
-                                    todayClasses = todayClasses,
-                                    todayDayName = todayDayName,
-                                    assignments = assignments,
-                                    exams = exams,
-                                    onNavigateToRoutine = onNavigateToRoutine,
-                                    onNavigateToAssignments = onNavigateToAssignments,
-                                    onNavigateToExams = onNavigateToExams
-                                )
-                            }
-                        }
+                    if (displaySponsors.isNotEmpty()) {
+                        CompactSponsorCarousel(
+                            sponsors = displaySponsors,
+                            onSponsorClick = onSponsorClick,
+                            onSponsorImpression = onSponsorImpression,
+                            slideIntervalMillis = 4000L
+                        )
+                    } else {
+                        TodayAcademicAgendaBanner(
+                            todayClasses = todayClasses,
+                            todayDayName = todayDayName,
+                            assignments = assignments,
+                            exams = exams,
+                            onNavigateToRoutine = onNavigateToRoutine,
+                            onNavigateToAssignments = onNavigateToAssignments,
+                            onNavigateToExams = onNavigateToExams
+                        )
                     }
                 }
             }
@@ -1206,6 +1176,45 @@ fun TodayAcademicAgendaBanner(
 ) {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
+    // Current time in minutes from midnight (0..1439) with real-time periodic updates
+    var nowMinutes by remember {
+        val c = getAppCalendar()
+        mutableIntStateOf(c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE))
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val c = getAppCalendar()
+            nowMinutes = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
+            delay(15_000L) // Refresh every 15 seconds
+        }
+    }
+
+    // 1. Ongoing class: currently running (startTimeMinutes <= nowMinutes < effectiveEndTime)
+    val ongoingClass = remember(todayClasses, nowMinutes) {
+        todayClasses.firstOrNull { classItem ->
+            val effectiveEnd = if (classItem.endTimeMinutes > classItem.startTimeMinutes) {
+                classItem.endTimeMinutes
+            } else {
+                classItem.startTimeMinutes + 60
+            }
+            nowMinutes >= classItem.startTimeMinutes && nowMinutes < effectiveEnd
+        }
+    }
+
+    // 2. Next upcoming class today: has not started yet (startTimeMinutes > nowMinutes)
+    val nextUpcomingClass = remember(todayClasses, nowMinutes) {
+        todayClasses.firstOrNull { classItem ->
+            classItem.startTimeMinutes > nowMinutes
+        }
+    }
+
+    // Active class to spotlight: ongoing class takes priority, otherwise next upcoming class
+    val spotlightClass = ongoingClass ?: nextUpcomingClass
+
+    // Are all classes for today finished?
+    val areAllClassesDone = todayClasses.isNotEmpty() && spotlightClass == null
+
     val pendingAssignments = remember(assignments) {
         assignments.filter { !it.isCompleted }.sortedBy { it.dueDate }
     }
@@ -1215,9 +1224,9 @@ fun TodayAcademicAgendaBanner(
     }
 
     // Determine primary destination when clicking the overall card
-    val onClickAction = remember(todayClasses, pendingAssignments, upcomingExams) {
+    val onClickAction = remember(spotlightClass, pendingAssignments, upcomingExams) {
         when {
-            todayClasses.isNotEmpty() -> onNavigateToRoutine
+            spotlightClass != null -> onNavigateToRoutine
             pendingAssignments.isNotEmpty() -> onNavigateToAssignments
             upcomingExams.isNotEmpty() -> onNavigateToExams
             else -> onNavigateToRoutine
@@ -1322,17 +1331,31 @@ fun TodayAcademicAgendaBanner(
                             color = if (isDark) Color(0xFFF1F5F9) else Color(0xFF0F172A)
                         )
 
-                        // Status chip
+                        // Status chip reflecting current state
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = if (isDark) Color(0xFF132828) else Color(0xFF0F172A).copy(alpha = 0.10f),
                             border = if (isDark) BorderStroke(0.5.dp, Color(0xFF1B3D3B)) else null
                         ) {
+                            val chipText = when {
+                                todayClasses.isEmpty() -> "No Classes"
+                                ongoingClass != null -> "Ongoing Class"
+                                spotlightClass != null -> {
+                                    val remainingCount = todayClasses.count { it.startTimeMinutes > nowMinutes }
+                                    if (remainingCount <= 1) "1 Class" else "$remainingCount Classes"
+                                }
+                                areAllClassesDone -> "All Completed"
+                                else -> "No Classes"
+                            }
                             Text(
-                                text = if (todayClasses.isNotEmpty()) "${todayClasses.size} ${if (todayClasses.size == 1) "Class" else "Classes"}" else "No Classes",
+                                text = chipText,
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isDark) Color(0xFF2DD4BF) else Color(0xFF1E293B),
+                                color = if (isDark) {
+                                    if (ongoingClass != null) Color(0xFF34D399) else Color(0xFF2DD4BF)
+                                } else {
+                                    if (ongoingClass != null) Color(0xFF059669) else Color(0xFF1E293B)
+                                },
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -1357,9 +1380,101 @@ fun TodayAcademicAgendaBanner(
                     }
                 }
 
-                // Middle Spotlight Section (Frosted banner matching screenshot)
-                if (todayClasses.isNotEmpty()) {
-                    val firstClass = todayClasses[0]
+                // Middle Spotlight Section (Dynamic: Current Ongoing / Next Upcoming / All Done / No Classes)
+                if (spotlightClass != null) {
+                    val isOngoing = ongoingClass != null
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (isDark) Color(0xFF132024)
+                                else Color.White.copy(alpha = 0.45f)
+                            )
+                            .border(
+                                BorderStroke(
+                                    1.dp,
+                                    if (isDark) {
+                                        if (isOngoing) Color(0xFF2DD4BF).copy(alpha = 0.8f)
+                                        else Color(0xFF1B2D33)
+                                    } else {
+                                        if (isOngoing) Color(0xFF0D9488)
+                                        else Color.White.copy(alpha = 0.7f)
+                                    }
+                                ),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable(onClick = onNavigateToRoutine)
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = spotlightClass.courseName,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isDark) Color.White else Color(0xFF0F172A),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (isOngoing) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0xFF10B981).copy(alpha = 0.2f)
+                                    ) {
+                                        Text(
+                                            text = "LIVE",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                                            color = Color(0xFF10B981),
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                } else if (todayClasses.indexOf(spotlightClass) > 0) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = if (isDark) Color(0xFF162E2E) else Color(0xFF0F172A).copy(alpha = 0.08f)
+                                    ) {
+                                        Text(
+                                            text = "UP NEXT",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                                            color = if (isDark) Color(0xFF2DD4BF) else Color(0xFF0F172A),
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            val roomText = if (!spotlightClass.roomNumber.isNullOrBlank()) "Room: ${spotlightClass.roomNumber}" else "Class Today"
+                            Text(
+                                text = roomText,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                color = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (isDark) Color(0xFF0F171A) else Color.White.copy(alpha = 0.75f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isDark) Color(0xFF1B2D33) else Color.White.copy(alpha = 0.9f)
+                            )
+                        ) {
+                            Text(
+                                text = "${spotlightClass.startTime} - ${spotlightClass.endTime}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color(0xFF2DD4BF) else Color(0xFF0F172A),
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                } else if (areAllClassesDone) {
+                    // All classes completed for today! (e.g. at 8:00 PM)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1378,45 +1493,26 @@ fun TodayAcademicAgendaBanner(
                             )
                             .clickable(onClick = onNavigateToRoutine)
                             .padding(horizontal = 10.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = firstClass.courseName,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isDark) Color.White else Color(0xFF0F172A),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            val roomText = if (!firstClass.roomNumber.isNullOrBlank()) "Room: ${firstClass.roomNumber}" else "Class Today"
-                            Text(
-                                text = roomText,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                color = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = if (isDark) Color(0xFF0F171A) else Color.White.copy(alpha = 0.75f),
-                            border = BorderStroke(
-                                1.dp,
-                                if (isDark) Color(0xFF1B2D33) else Color.White.copy(alpha = 0.9f)
-                            )
-                        ) {
-                            Text(
-                                text = "${firstClass.startTime} - ${firstClass.endTime}",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDark) Color(0xFF2DD4BF) else Color(0xFF0F172A),
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = if (isDark) Color(0xFF2DD4BF) else Color(0xFF0D9488),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "All classes completed for today! 🎉",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDark) Color(0xFFE2E8F0) else Color(0xFF1E293B),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 } else {
-                    // No classes or urgent pending tasks (Matches screenshot banner)
+                    // No classes scheduled today (Matches screenshot banner)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

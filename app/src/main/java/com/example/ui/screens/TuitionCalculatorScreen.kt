@@ -77,6 +77,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -120,12 +121,77 @@ val AvailableCurrencies = listOf(
     CurrencyOption("A$", "AUD", "Australian Dollar")
 )
 
-enum class InstallmentPreset(val label: String, val p1: Double, val p2: Double, val p3: Double) {
-    STANDARD("40% - 30% - 30%", 40.0, 30.0, 30.0),
-    EQUAL("33.3% - 33.3% - 33.4%", 33.333333, 33.333333, 33.333334),
-    HEAVY_INITIAL("50% - 25% - 25%", 50.0, 25.0, 25.0),
-    CUSTOM("Custom", 0.0, 0.0, 0.0)
+data class DistributionPreset(
+    val label: String,
+    val percentages: List<Double>
+)
+
+fun getPresetsForCount(count: Int): List<DistributionPreset> {
+    return when (count) {
+        2 -> listOf(
+            DistributionPreset("50 - 50", listOf(50.0, 50.0)),
+            DistributionPreset("60 - 40", listOf(60.0, 40.0)),
+            DistributionPreset("70 - 30", listOf(70.0, 30.0)),
+            DistributionPreset("Custom", emptyList())
+        )
+        3 -> listOf(
+            DistributionPreset("40-30-30", listOf(40.0, 30.0, 30.0)),
+            DistributionPreset("Equal (33%)", listOf(33.34, 33.33, 33.33)),
+            DistributionPreset("50-25-25", listOf(50.0, 25.0, 25.0)),
+            DistributionPreset("Custom", emptyList())
+        )
+        4 -> listOf(
+            DistributionPreset("Equal (25%)", listOf(25.0, 25.0, 25.0, 25.0)),
+            DistributionPreset("40-20-20-20", listOf(40.0, 20.0, 20.0, 20.0)),
+            DistributionPreset("Custom", emptyList())
+        )
+        5 -> listOf(
+            DistributionPreset("Equal (20%)", listOf(20.0, 20.0, 20.0, 20.0, 20.0)),
+            DistributionPreset("Custom", emptyList())
+        )
+        6 -> listOf(
+            DistributionPreset("Equal (16.7%)", listOf(16.7, 16.7, 16.7, 16.7, 16.6, 16.6)),
+            DistributionPreset("Custom", emptyList())
+        )
+        else -> listOf(
+            DistributionPreset("Equal Split", List(count) { 100.0 / count }),
+            DistributionPreset("Custom", emptyList())
+        )
+    }
 }
+
+fun getOrdinalTitle(index: Int): String {
+    val num = index + 1
+    val suffix = when {
+        num % 100 in 11..13 -> "th"
+        num % 10 == 1 -> "st"
+        num % 10 == 2 -> "nd"
+        num % 10 == 3 -> "rd"
+        else -> "th"
+    }
+    return "$num$suffix Installment"
+}
+
+fun getOrdinalShort(index: Int): String {
+    val num = index + 1
+    val suffix = when {
+        num % 100 in 11..13 -> "th"
+        num % 10 == 1 -> "st"
+        num % 10 == 2 -> "nd"
+        num % 10 == 3 -> "rd"
+        else -> "th"
+    }
+    return "$num$suffix"
+}
+
+private val installmentColors = listOf(
+    Color(0xFF0D9488), // Teal
+    Color(0xFFD97706), // Amber
+    Color(0xFF7C3AED), // Violet
+    Color(0xFF0284C7), // Sky Blue
+    Color(0xFFEC4899), // Pink
+    Color(0xFF059669)  // Emerald
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,20 +213,36 @@ fun TuitionCalculatorScreen(
     var labFeeText by rememberSaveable { mutableStateOf("") }
     var otherFeeText by rememberSaveable { mutableStateOf("") }
 
-    // Installment setup
-    var selectedPreset by rememberSaveable { mutableStateOf(InstallmentPreset.STANDARD) }
-    var customP1Text by rememberSaveable { mutableStateOf("40") }
-    var customP2Text by rememberSaveable { mutableStateOf("30") }
-    var customP3Text by rememberSaveable { mutableStateOf("30") }
-
-    // Paid status toggles
-    var isInstallment1Paid by rememberSaveable { mutableStateOf(false) }
-    var isInstallment2Paid by rememberSaveable { mutableStateOf(false) }
-    var isInstallment3Paid by rememberSaveable { mutableStateOf(false) }
+    // Dynamic Installment setup
+    var installmentCount by rememberSaveable { mutableIntStateOf(3) }
+    var selectedPresetLabel by rememberSaveable { mutableStateOf("40-30-30") }
+    var customPcts by rememberSaveable {
+        mutableStateOf(listOf("40", "30", "30"))
+    }
+    var isPaidList by rememberSaveable {
+        mutableStateOf(listOf(false, false, false))
+    }
 
     // Formatting helpers
     val numberFormatter = remember {
         DecimalFormat("#,##0.##", DecimalFormatSymbols(Locale.US))
+    }
+
+    fun changeInstallmentCount(newCount: Int) {
+        installmentCount = newCount
+        val presets = getPresetsForCount(newCount)
+        val defaultPreset = presets.first()
+        selectedPresetLabel = defaultPreset.label
+        val newPcts = when (newCount) {
+            2 -> listOf("50", "50")
+            3 -> listOf("40", "30", "30")
+            4 -> listOf("25", "25", "25", "25")
+            5 -> listOf("20", "20", "20", "20", "20")
+            6 -> listOf("16.7", "16.7", "16.7", "16.7", "16.6", "16.6")
+            else -> List(newCount) { numberFormatter.format(100.0 / newCount) }
+        }
+        customPcts = newPcts
+        isPaidList = List(newCount) { false }
     }
 
     // Calculations
@@ -178,27 +260,18 @@ fun TuitionCalculatorScreen(
 
     val totalNetPayable = tuitionAfterWaiver + totalAdditionalFees
 
-    // Installment percentages
-    val (p1, p2, p3) = when (selectedPreset) {
-        InstallmentPreset.CUSTOM -> {
-            val v1 = customP1Text.toDoubleOrNull() ?: 0.0
-            val v2 = customP2Text.toDoubleOrNull() ?: 0.0
-            val v3 = customP3Text.toDoubleOrNull() ?: 0.0
-            Triple(v1, v2, v3)
-        }
-        else -> Triple(selectedPreset.p1, selectedPreset.p2, selectedPreset.p3)
-    }
-
-    val sumPercentages = p1 + p2 + p3
+    // Dynamic Installment percentages
+    val percentages = customPcts.map { it.toDoubleOrNull() ?: 0.0 }
+    val sumPercentages = percentages.sum()
     val isPercentageValid = abs(sumPercentages - 100.0) < 0.2
 
-    val installment1Amount = (totalNetPayable * (p1 / 100.0)).coerceAtLeast(0.0)
-    val installment2Amount = (totalNetPayable * (p2 / 100.0)).coerceAtLeast(0.0)
-    val installment3Amount = (totalNetPayable * (p3 / 100.0)).coerceAtLeast(0.0)
+    val installmentAmounts = percentages.map { pct ->
+        (totalNetPayable * (pct / 100.0)).coerceAtLeast(0.0)
+    }
 
-    val paidTotal = (if (isInstallment1Paid) installment1Amount else 0.0) +
-            (if (isInstallment2Paid) installment2Amount else 0.0) +
-            (if (isInstallment3Paid) installment3Amount else 0.0)
+    val paidTotal = installmentAmounts.filterIndexed { idx, _ ->
+        isPaidList.getOrElse(idx) { false }
+    }.sum()
     val dueTotal = (totalNetPayable - paidTotal).coerceAtLeast(0.0)
 
     // Helper functions for sharing & copying
@@ -222,10 +295,13 @@ fun TuitionCalculatorScreen(
             appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
             appendLine("💰 Total Net Payable: $selectedCurrency${numberFormatter.format(totalNetPayable)}")
             appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            appendLine("📅 3 Installments Breakdown:")
-            appendLine("1️⃣ 1st Installment (${numberFormatter.format(p1)}%): $selectedCurrency${numberFormatter.format(installment1Amount)} [${if (isInstallment1Paid) "Paid ✓" else "Due"}]")
-            appendLine("2️⃣ 2nd Installment (${numberFormatter.format(p2)}%): $selectedCurrency${numberFormatter.format(installment2Amount)} [${if (isInstallment2Paid) "Paid ✓" else "Due"}]")
-            appendLine("3️⃣ 3rd Installment (${numberFormatter.format(p3)}%): $selectedCurrency${numberFormatter.format(installment3Amount)} [${if (isInstallment3Paid) "Paid ✓" else "Due"}]")
+            appendLine("📅 $installmentCount Installments Breakdown:")
+            percentages.forEachIndexed { index, pct ->
+                val amount = installmentAmounts.getOrElse(index) { 0.0 }
+                val isPaid = isPaidList.getOrElse(index) { false }
+                val title = getOrdinalTitle(index)
+                appendLine("• $title (${numberFormatter.format(pct)}%): $selectedCurrency${numberFormatter.format(amount)} [${if (isPaid) "Paid ✓" else "Due"}]")
+            }
             appendLine("----------------------------")
             appendLine("Remaining Due: $selectedCurrency${numberFormatter.format(dueTotal)}")
             appendLine("Generated via ClassMate")
@@ -244,7 +320,7 @@ fun TuitionCalculatorScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Semester credits & 3 installments",
+                            text = "Semester credits & $installmentCount installments",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -324,14 +400,9 @@ fun TuitionCalculatorScreen(
                             waiverPercentText = "0"
                             labFeeText = ""
                             otherFeeText = ""
-                            selectedPreset = InstallmentPreset.STANDARD
-                            customP1Text = "40"
-                            customP2Text = "30"
-                            customP3Text = "30"
-                            isInstallment1Paid = false
-                            isInstallment2Paid = false
-                            isInstallment3Paid = false
-                            Toast.makeText(context, "Calculator reset to 0", Toast.LENGTH_SHORT).show()
+                            installmentCount = 3
+                            changeInstallmentCount(3)
+                            Toast.makeText(context, "Calculator reset", Toast.LENGTH_SHORT).show()
                         }
                     ) {
                         Icon(
@@ -477,7 +548,7 @@ fun TuitionCalculatorScreen(
                         }
 
                         // Due status pill if installments are toggled
-                        if (isInstallment1Paid || isInstallment2Paid || isInstallment3Paid) {
+                        if (isPaidList.any { it }) {
                             Spacer(modifier = Modifier.height(10.dp))
                             HorizontalDivider(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
@@ -842,7 +913,7 @@ fun TuitionCalculatorScreen(
                 }
             }
 
-            // Section 4: 3 Installments Split Selection
+            // Section 4: Installment Distribution
             item {
                 Card(
                     shape = RoundedCornerShape(18.dp),
@@ -854,7 +925,7 @@ fun TuitionCalculatorScreen(
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -919,91 +990,118 @@ fun TuitionCalculatorScreen(
                             }
                         }
 
-                        // Presets Chips
-                        Text(
-                            text = "Choose distribution ratio or customize:",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // Number of Installments selector (2 to 6)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Number of installments:",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            InstallmentPreset.entries.forEach { preset ->
-                                val isSelected = selectedPreset == preset
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        selectedPreset = preset
-                                        if (preset != InstallmentPreset.CUSTOM) {
-                                            customP1Text = numberFormatter.format(preset.p1)
-                                            customP2Text = numberFormatter.format(preset.p2)
-                                            customP3Text = numberFormatter.format(preset.p3)
-                                        }
-                                    },
-                                    label = {
-                                        Text(
-                                            text = when (preset) {
-                                                InstallmentPreset.STANDARD -> "40-30-30"
-                                                InstallmentPreset.EQUAL -> "Equal (33%)"
-                                                InstallmentPreset.HEAVY_INITIAL -> "50-25-25"
-                                                InstallmentPreset.CUSTOM -> "Custom"
-                                            },
-                                            fontSize = 11.sp
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(2, 3, 4, 5, 6).forEach { count ->
+                                    val isSelected = installmentCount == count
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            if (installmentCount != count) {
+                                                changeInstallmentCount(count)
+                                            }
+                                        },
+                                        label = {
+                                            Text(
+                                                text = "$count",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                textAlign = TextAlign.Center,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
+                                    )
+                                }
                             }
                         }
 
-                        // Custom percentage inputs (always editable if custom or visible)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = if (selectedPreset == InstallmentPreset.CUSTOM) customP1Text else numberFormatter.format(p1),
-                                onValueChange = {
-                                    selectedPreset = InstallmentPreset.CUSTOM
-                                    customP1Text = it
-                                },
-                                label = { Text("1st (%)") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                modifier = Modifier.weight(1f)
+                        // Presets Chips
+                        val presets = remember(installmentCount) { getPresetsForCount(installmentCount) }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Distribution ratio or customize (%):",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            OutlinedTextField(
-                                value = if (selectedPreset == InstallmentPreset.CUSTOM) customP2Text else numberFormatter.format(p2),
-                                onValueChange = {
-                                    selectedPreset = InstallmentPreset.CUSTOM
-                                    customP2Text = it
-                                },
-                                label = { Text("2nd (%)") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                presets.forEach { preset ->
+                                    val isSelected = selectedPresetLabel == preset.label
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            selectedPresetLabel = preset.label
+                                            if (preset.percentages.isNotEmpty()) {
+                                                customPcts = preset.percentages.map { numberFormatter.format(it) }
+                                            }
+                                        },
+                                        label = {
+                                            Text(
+                                                text = preset.label,
+                                                fontSize = 11.sp
+                                            )
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
 
-                            OutlinedTextField(
-                                value = if (selectedPreset == InstallmentPreset.CUSTOM) customP3Text else numberFormatter.format(p3),
-                                onValueChange = {
-                                    selectedPreset = InstallmentPreset.CUSTOM
-                                    customP3Text = it
-                                },
-                                label = { Text("3rd (%)") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                modifier = Modifier.weight(1f)
-                            )
+                        // Custom percentage inputs arranged adaptively
+                        val chunkedIndices = remember(installmentCount) {
+                            val chunkSize = if (installmentCount <= 3) installmentCount else 2
+                            (0 until installmentCount).chunked(chunkSize)
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            chunkedIndices.forEach { rowIndices ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    rowIndices.forEach { index ->
+                                        val valText = customPcts.getOrElse(index) { "" }
+                                        OutlinedTextField(
+                                            value = valText,
+                                            onValueChange = { newVal ->
+                                                selectedPresetLabel = "Custom"
+                                                val updated = customPcts.toMutableList()
+                                                while (updated.size <= index) updated.add("0")
+                                                updated[index] = newVal
+                                                customPcts = updated
+                                            },
+                                            label = { Text("${getOrdinalShort(index)} (%)") },
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                            singleLine = true,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Section 5: The 3 Installment Result Cards
+            // Section 5: Dynamic Installment Result Cards
             item {
                 Text(
                     text = "Installment Payment Schedule",
@@ -1013,50 +1111,28 @@ fun TuitionCalculatorScreen(
                 )
             }
 
-            // Installment 1 Card
-            item {
-                InstallmentCard(
-                    number = 1,
-                    title = "1st Installment",
-                    subtitle = "Registration / Admission / Pre-Midterm",
-                    percentage = p1,
-                    amount = installment1Amount,
-                    currency = selectedCurrency,
-                    isPaid = isInstallment1Paid,
-                    onTogglePaid = { isInstallment1Paid = it },
-                    accentColor = MaterialTheme.colorScheme.primary,
-                    formatter = numberFormatter
-                )
-            }
+            // Dynamically render each installment card
+            items(installmentCount) { index ->
+                val pct = percentages.getOrElse(index) { 0.0 }
+                val amount = installmentAmounts.getOrElse(index) { 0.0 }
+                val isPaid = isPaidList.getOrElse(index) { false }
+                val title = getOrdinalTitle(index)
+                val accentColor = installmentColors[index % installmentColors.size]
 
-            // Installment 2 Card
-            item {
                 InstallmentCard(
-                    number = 2,
-                    title = "2nd Installment",
-                    subtitle = "Midterm Examination Period",
-                    percentage = p2,
-                    amount = installment2Amount,
+                    number = index + 1,
+                    title = title,
+                    percentage = pct,
+                    amount = amount,
                     currency = selectedCurrency,
-                    isPaid = isInstallment2Paid,
-                    onTogglePaid = { isInstallment2Paid = it },
-                    accentColor = Color(0xFFD97706),
-                    formatter = numberFormatter
-                )
-            }
-
-            // Installment 3 Card
-            item {
-                InstallmentCard(
-                    number = 3,
-                    title = "3rd Installment",
-                    subtitle = "Final Exams / Semester Clearance",
-                    percentage = p3,
-                    amount = installment3Amount,
-                    currency = selectedCurrency,
-                    isPaid = isInstallment3Paid,
-                    onTogglePaid = { isInstallment3Paid = it },
-                    accentColor = Color(0xFF7C3AED),
+                    isPaid = isPaid,
+                    onTogglePaid = { paid ->
+                        val updated = isPaidList.toMutableList()
+                        while (updated.size <= index) updated.add(false)
+                        updated[index] = paid
+                        isPaidList = updated
+                    },
+                    accentColor = accentColor,
                     formatter = numberFormatter
                 )
             }
@@ -1127,7 +1203,6 @@ fun TuitionCalculatorScreen(
 private fun InstallmentCard(
     number: Int,
     title: String,
-    subtitle: String,
     percentage: Double,
     amount: Double,
     currency: String,
@@ -1190,34 +1265,27 @@ private fun InstallmentCard(
                         }
                     }
 
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = accentColor.copy(alpha = 0.15f)
                         ) {
                             Text(
-                                text = title,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                text = "${formatter.format(percentage)}%",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = accentColor,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = accentColor.copy(alpha = 0.15f)
-                            ) {
-                                Text(
-                                    text = "${formatter.format(percentage)}%",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = accentColor,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
                         }
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
 
